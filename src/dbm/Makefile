@@ -10,32 +10,16 @@ realclean: clean
 
 CFLAGS := -fopenmp -g -O3 -march=native -Wall -Wextra -Wno-vla-parameter
 
-NVCC := $(shell which nvcc)
-NVARCH := sm_70
-NVFLAGS := -g -O3 -lineinfo -arch $(NVARCH) -Wno-deprecated-gpu-targets -Xcompiler "$(CFLAGS)" -D__OFFLOAD_CUDA
+HIP_PLATFORM = $(shell hipconfig --platform)
 
-HIPCC := $(shell which hipcc)
-HIPARCH := gfx90a
-HIPFLAGS := -fPIE -g -O3 --offload-arch=$(HIPARCH) -Wall -Wextra -Werror -I${ROCM_PATH}/include -D__OFFLOAD_HIP -D__HIP_PLATFORM_AMD__ -D__HIP_PLATFORM_AMD__
-
-ifneq ($(LIBXSMMROOT),)
-LIBS += \
-        -L$(LIBXSMMROOT)/lib -lxsmm -lxsmmext \
-        -lpthread -lrt
-CFLAGS += -D__LIBXSMM -I$(LIBXSMMROOT)/include
+ifeq (${HIP_PLATFORM}, nvidia)
+ARCH := sm_80
+HIP_PATH := /global/common/software/nersc/easybuild/perlmutter/21.10/software/hip/5.3.2
+HIP_BACKEND = __HIP_PLATFORM_NVIDIA__
 endif
 
-ifneq ($(MKLROOT),)
-LIBS += \
-        -L$(MKLROOT)/lib/intel64 \
-        -Wl,--start-group \
-        -lmkl_gf_lp64 \
-        -lmkl_core \
-        -lmkl_sequential \
-        -Wl,--end-group
-else
-LIBS += -lblas
-endif
+GPU_CC = hipcc
+NVFLAGS := -g -O3 -lineinfo -arch $(ARCH) -Wno-deprecated-gpu-targets -Xcompiler "$(CFLAGS)" -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 
 LIBS += -fopenmp -ldl -lstdc++ -lc -lm
 
@@ -52,43 +36,14 @@ ALL_OBJECTS := ../offload/offload_library.o \
         dbm_shard.o
 
 
-# Enable Cuda when nvcc compiler is present.
-ifneq ($(NVCC),)
-LIBS += -lcudart -lcuda -lcublas -L${CUDA_PATH}/lib64
-CFLAGS += -I${CUDA_PATH}/include -D__OFFLOAD_CUDA
+LIBS += -lhipblas -L${HIP_PATH}/lib
+CFLAGS += -I${HIP_PATH}/include -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 ALL_OBJECTS += dbm_multiply_gpu.o
 
 %.o: %.cu $(ALL_HEADERS)
-	cd $(dir $<); $(NVCC) -c $(NVFLAGS) $(notdir $<)
+	cd $(dir $<); $(GPU_CC) -c $(NVFLAGS) $(notdir $<)
 
-
-# Enable HIP/ROCm when hipcc compiler is present.
-else ifneq ($(HIPCC),)
-LIBS += -L${ROCM_PATH}/lib -lamdhip64 -lhipfft -lhipblas -lrocblas
-CFLAGS += -I${ROCM_PATH}/include -D__OFFLOAD_HIP -D__HIP_PLATFORM_AMD__
-ALL_OBJECTS += dbm_multiply_gpu.o
-
-%.o: %.cu $(ALL_HEADERS)
-	cd $(dir $<); $(HIPCC) -c $(HIPFLAGS) $(notdir $<)
-endif
-
-
-# Build with MPI when mpicc compiler is present.
-ifneq ($(MPICC),)
-%.o: %.c $(ALL_HEADERS)
-	cd $(dir $<); $(MPICC) -c -std=c11 $(CFLAGS) -D__parallel $(notdir $<)
-
-dbm_miniapp.x: dbm_miniapp.o $(ALL_OBJECTS)
-	$(MPICC) $(CFLAGS) -o $@ $^ $(LIBS)
-
-
-# Build without MPI otherwise.
-else
-%.o: %.c $(ALL_HEADERS)
-	cd $(dir $<); $(CC) -c -std=c11 $(CFLAGS) $(notdir $<)
-
-dbm_miniapp.x: dbm_miniapp.o $(ALL_OBJECTS)
+dbm_miniapp.x: dbm_multiply_gpu_kernel.o dbm_miniapp.o $(ALL_OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
-endif
 #EOF

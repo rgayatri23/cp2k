@@ -24,7 +24,7 @@ LIBARCHFLAG := -lamdhip64 -lrocblas
 endif
 
 GPU_CC = hipcc
-GPU_FLAGS := -fPIE -g -O3 --offload-arch=$(ARCH) -Wall -Wextra -Werror -D__OFFLOAD_HIP -D__HIP_PLATFORM_AMD__
+GPU_FLAGS := -fPIE -g -O3 --offload-arch=$(ARCH) -Wall -Wextra -Werror -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 
 LIBS += -fopenmp -ldl -lstdc++ -lc -lm
 

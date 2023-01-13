@@ -12,19 +12,20 @@ CFLAGS := -fopenmp -g -O3 -march=native -Wall -Wextra -Wno-vla-parameter
 
 HIP_PLATFORM = $(shell hipconfig --platform)
 
+GPU_CC = hipcc
 ifeq (${HIP_PLATFORM}, nvidia)
 ARCH := sm_80
 HIP_PATH := /global/common/software/nersc/easybuild/perlmutter/21.10/software/hip/5.3.2
 HIP_BACKEND = __HIP_PLATFORM_NVIDIA__
+GPU_FLAGS := -g -O3 -lineinfo -arch $(ARCH) -Wno-deprecated-gpu-targets -Xcompiler "$(CFLAGS)" -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 else ifeq (${HIP_PLATFORM}, amd)
 ARCH := gfx90a
 HIP_PATH := $(ROCM_PATH)
 HIP_BACKEND = __HIP_PLATFORM_AMD__
 LIBARCHFLAG := -lamdhip64 -lrocblas
+GPU_FLAGS := -fPIE -g -O3 --offload-arch=$(ARCH) -Wall -Wextra -Werror -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 endif
 
-GPU_CC = hipcc
-GPU_FLAGS := -fPIE -g -O3 --offload-arch=$(ARCH) -Wall -Wextra -Werror -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 
 LIBS += -fopenmp -ldl -lstdc++ -lc -lm
 
@@ -41,7 +42,7 @@ ALL_OBJECTS := ../offload/offload_library.o \
         dbm_shard.o
 
 
-LIBS += -L${HIP_PATH}/lib $(LIBARCHFLAG) -lhipfft -lhipblas
+LIBS += -L${HIP_PATH}/hipblas/lib -L${HIP_PATH}/lib $(LIBARCHFLAG) -lhipblas
 CFLAGS += -I${HIP_PATH}/include -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 ALL_OBJECTS += dbm_multiply_gpu.o
 

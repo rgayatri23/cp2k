@@ -16,6 +16,7 @@
 #include "dbm_hyperparams.h"
 #include "dbm_matrix.h"
 #include "dbm_mpi.h"
+#include "dbm_mempool.h"
 
 /*******************************************************************************
  * \brief Creates a new matrix.
@@ -26,7 +27,7 @@ void dbm_create(dbm_matrix_t **matrix_out, dbm_distribution_t *dist,
                 const int row_sizes[nrows], const int col_sizes[ncols]) {
   assert(omp_get_num_threads() == 1);
 
-  dbm_matrix_t *matrix = calloc(1, sizeof(dbm_matrix_t));
+  dbm_matrix_t *matrix = dbm_mem_calloc<dbm_matrix_t*>(1, sizeof(dbm_matrix_t));
 
   assert(dist->rows.length == nrows);
   assert(dist->cols.length == ncols);
@@ -34,21 +35,21 @@ void dbm_create(dbm_matrix_t **matrix_out, dbm_distribution_t *dist,
   matrix->dist = dist;
 
   size_t size = (strlen(name) + 1) * sizeof(char);
-  matrix->name = malloc(size);
+  matrix->name = dbm_mem_alloc<char*>(size);
   memcpy(matrix->name, name, size);
 
   matrix->nrows = nrows;
   matrix->ncols = ncols;
 
   size = nrows * sizeof(int);
-  matrix->row_sizes = malloc(size);
+  matrix->row_sizes = dbm_mem_alloc<int*>(size);
   memcpy(matrix->row_sizes, row_sizes, size);
 
   size = ncols * sizeof(int);
-  matrix->col_sizes = malloc(size);
+  matrix->col_sizes = dbm_mem_alloc<int*>(size);
   memcpy(matrix->col_sizes, col_sizes, size);
 
-  matrix->shards = malloc(dbm_get_num_shards(matrix) * sizeof(dbm_shard_t));
+  matrix->shards = dbm_mem_alloc<dbm_shard_t*>(dbm_get_num_shards(matrix) * sizeof(dbm_shard_t));
 #pragma omp parallel for
   for (int ishard = 0; ishard < dbm_get_num_shards(matrix); ishard++) {
     dbm_shard_init(&matrix->shards[ishard]);
@@ -149,8 +150,8 @@ void dbm_redistribute(const dbm_matrix_t *matrix, dbm_matrix_t *redist) {
   }
   const int total_send_count = send_displ[nranks];
   const int total_recv_count = recv_displ[nranks];
-  double *data_send = malloc(total_send_count * sizeof(double));
-  double *data_recv = malloc(total_recv_count * sizeof(double));
+  double *data_send = dbm_mem_alloc<double*>(total_send_count * sizeof(double));
+  double *data_recv = dbm_mem_alloc<double*>(total_recv_count * sizeof(double));
 
   // 2nd pass: Fill send_data.
   int send_data_positions[nranks];
@@ -426,7 +427,7 @@ void dbm_add(dbm_matrix_t *matrix_a, const dbm_matrix_t *matrix_b) {
 void dbm_iterator_start(dbm_iterator_t **iter_out, const dbm_matrix_t *matrix) {
   assert(omp_get_num_threads() == omp_get_max_threads() &&
          "Please call dbm_iterator_start within an OpenMP parallel region.");
-  dbm_iterator_t *iter = malloc(sizeof(dbm_iterator_t));
+  dbm_iterator_t *iter = dbm_mem_alloc<dbm_iterator_t*>(sizeof(dbm_iterator_t));
   iter->matrix = matrix;
   iter->next_block = 0;
   iter->next_shard = omp_get_thread_num();

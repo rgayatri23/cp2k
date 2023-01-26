@@ -41,6 +41,33 @@ void dbm_mempool_clear(void);
 }
 #endif
 
+
+/*******************************************************************************
+ * \A small wrapper around malloc's to return the pointer with the typecast.
+ * \author Rahul Gayatri
+ ******************************************************************************/
+#ifdef __cplusplus
+
+template<class DataType>
+DataType dbm_mem_alloc(size_t N)
+{
+  return((DataType)malloc(N));
+}
+
+template<class DataType>
+DataType dbm_mem_calloc(size_t nitems, size_t N)
+{
+  return((DataType)calloc(nitems, N));
+}
+
+template<class DataType>
+DataType dbm_mem_realloc(void* ptr, size_t N)
+{
+  return((DataType)realloc(ptr, N));
+}
+
+#endif
+
 #endif
 
 // EOF

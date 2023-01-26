@@ -34,7 +34,7 @@ static void *actual_malloc(const size_t size, const bool on_device) {
   (void)on_device; // mark used
 #endif
 
-  void *memory = malloc(size);
+  void *memory = dbm_mem_alloc<void*>(size);
   assert(memory != NULL);
   return memory;
 }
@@ -113,7 +113,7 @@ static void *internal_mempool_malloc(const size_t size, const bool on_device) {
 
     // If no chunk was found, allocate a new one.
     if (chunk == NULL) {
-      chunk = malloc(sizeof(dbm_memchunk_t));
+      chunk = dbm_mem_alloc<dbm_memchunk_t*>(sizeof(dbm_memchunk_t));
       chunk->on_device = on_device;
       chunk->size = 0;
       chunk->mem = NULL;

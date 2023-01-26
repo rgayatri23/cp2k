@@ -15,6 +15,7 @@
 
 #include "dbm_distribution.h"
 #include "dbm_hyperparams.h"
+#include "dbm_mempool.h"
 
 /*******************************************************************************
  * \brief Private routine for creating a new one dimensional distribution.
@@ -28,7 +29,7 @@ static void dbm_dist_1d_new(dbm_dist_1d_t *dist, const int length,
   dist->my_rank = dbm_mpi_comm_rank(comm);
   dist->nranks = dbm_mpi_comm_size(comm);
   dist->length = length;
-  dist->index2coord = malloc(length * sizeof(int));
+  dist->index2coord = dbm_mem_alloc<int*>(length * sizeof(int));
   memcpy(dist->index2coord, coords, length * sizeof(int));
 
   // Check that cart coordinates and ranks are equivalent.
@@ -46,7 +47,7 @@ static void dbm_dist_1d_new(dbm_dist_1d_t *dist, const int length,
   }
 
   // Store local rows/columns.
-  dist->local_indicies = malloc(dist->nlocals * sizeof(int));
+  dist->local_indicies = dbm_mem_alloc<int*>(dist->nlocals * sizeof(int));
   int j = 0;
   for (int i = 0; i < length; i++) {
     if (coords[i] == dist->my_rank) {
@@ -105,7 +106,7 @@ void dbm_distribution_new(dbm_distribution_t **dist_out, const int fortran_comm,
                           const int row_dist[nrows],
                           const int col_dist[ncols]) {
   assert(omp_get_num_threads() == 1);
-  dbm_distribution_t *dist = calloc(1, sizeof(dbm_distribution_t));
+  dbm_distribution_t *dist = dbm_mem_calloc<dbm_distribution_t*>(1, sizeof(dbm_distribution_t));
   dist->ref_count = 1;
 
   dist->comm = dbm_mpi_comm_f2c(fortran_comm);

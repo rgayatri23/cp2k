@@ -13,6 +13,7 @@
 
 #include "dbm_hyperparams.h"
 #include "dbm_shard.h"
+#include "dbm_mempool.h"
 
 /*******************************************************************************
  * \brief Internal routine for finding a power of two greater than given number.
@@ -53,7 +54,7 @@ static void hashtable_init(dbm_shard_t *shard) {
       next_power2(HASHTABLE_FACTOR * shard->nblocks_allocated);
   shard->hashtable_mask = shard->hashtable_size - 1;
   shard->hashtable_prime = next_prime(shard->hashtable_size);
-  shard->hashtable = calloc(shard->hashtable_size, sizeof(int));
+  shard->hashtable = dbm_mem_calloc<int*>(shard->hashtable_size, sizeof(int));
 }
 
 /*******************************************************************************
@@ -63,12 +64,12 @@ static void hashtable_init(dbm_shard_t *shard) {
 void dbm_shard_init(dbm_shard_t *shard) {
   shard->nblocks = 0;
   shard->nblocks_allocated = INITIAL_NBLOCKS_ALLOCATED;
-  shard->blocks = malloc(shard->nblocks_allocated * sizeof(dbm_block_t));
+  shard->blocks = dbm_mem_alloc<dbm_block_t*>(shard->nblocks_allocated * sizeof(dbm_block_t));
   hashtable_init(shard);
   shard->data_size = 0;
   shard->data_promised = 0;
   shard->data_allocated = INITIAL_DATA_ALLOCATED;
-  shard->data = malloc(shard->data_allocated * sizeof(double));
+  shard->data = dbm_mem_alloc<double*>(shard->data_allocated * sizeof(double));
 
   omp_init_lock(&shard->lock);
 }
@@ -81,7 +82,7 @@ void dbm_shard_copy(dbm_shard_t *shard_a, const dbm_shard_t *shard_b) {
   free(shard_a->blocks);
   shard_a->nblocks = shard_b->nblocks;
   shard_a->nblocks_allocated = shard_b->nblocks_allocated;
-  shard_a->blocks = malloc(shard_b->nblocks_allocated * sizeof(dbm_block_t));
+  shard_a->blocks = dbm_mem_alloc<dbm_block_t*>(shard_b->nblocks_allocated * sizeof(dbm_block_t));
   memcpy(shard_a->blocks, shard_b->blocks,
          shard_b->nblocks * sizeof(dbm_block_t));
 
@@ -89,13 +90,13 @@ void dbm_shard_copy(dbm_shard_t *shard_a, const dbm_shard_t *shard_b) {
   shard_a->hashtable_size = shard_b->hashtable_size;
   shard_a->hashtable_mask = shard_b->hashtable_mask;
   shard_a->hashtable_prime = shard_b->hashtable_prime;
-  shard_a->hashtable = malloc(shard_b->hashtable_size * sizeof(int));
+  shard_a->hashtable = dbm_mem_alloc<int*>(shard_b->hashtable_size * sizeof(int));
   memcpy(shard_a->hashtable, shard_b->hashtable,
          shard_b->hashtable_size * sizeof(int));
 
   free(shard_a->data);
   shard_a->data_allocated = shard_b->data_allocated;
-  shard_a->data = malloc(shard_b->data_allocated * sizeof(double));
+  shard_a->data = dbm_mem_alloc<double*>(shard_b->data_allocated * sizeof(double));
   shard_a->data_size = shard_b->data_size;
   memcpy(shard_a->data, shard_b->data, shard_b->data_size * sizeof(double));
 }
@@ -174,7 +175,7 @@ dbm_block_t *dbm_shard_promise_new_block(dbm_shard_t *shard, const int row,
   if (shard->nblocks_allocated < shard->nblocks + 1) {
     shard->nblocks_allocated = ALLOCATION_FACTOR * (shard->nblocks + 1);
     shard->blocks =
-        realloc(shard->blocks, shard->nblocks_allocated * sizeof(dbm_block_t));
+        dbm_mem_realloc<dbm_block_t*>((void*)shard->blocks, shard->nblocks_allocated * sizeof(dbm_block_t));
 
     // rebuild hashtable
     free(shard->hashtable);
@@ -205,7 +206,7 @@ void dbm_shard_allocate_promised_blocks(dbm_shard_t *shard) {
   // Reallocate data array if nessecary.
   if (shard->data_promised > shard->data_allocated) {
     shard->data_allocated = ALLOCATION_FACTOR * shard->data_promised;
-    shard->data = realloc(shard->data, shard->data_allocated * sizeof(double));
+    shard->data = dbm_mem_realloc<double*>((void*)shard->data, shard->data_allocated * sizeof(double));
   }
 
   // Zero new blocks.

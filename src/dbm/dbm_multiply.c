@@ -17,6 +17,7 @@
 #include "dbm_multiply_cpu.h"
 #include "dbm_multiply_gpu.h"
 #include "dbm_multiply_internal.h"
+#include "dbm_mempool.h"
 
 /*******************************************************************************
  * \brief Returns the larger of two given integer (missing from the C standard)
@@ -31,8 +32,8 @@ static inline int imax(int x, int y) { return (x > y ? x : y); }
 static float *compute_rows_max_eps(const bool trans, const dbm_matrix_t *matrix,
                                    const double filter_eps) {
   const int nrows = (trans) ? matrix->ncols : matrix->nrows;
-  int *nblocks_per_row = calloc(nrows, sizeof(int));
-  float *row_max_eps = malloc(nrows * sizeof(float));
+  int *nblocks_per_row = dbm_mem_calloc<int*>(nrows, sizeof(int));
+  float *row_max_eps = dbm_mem_alloc<float*>(nrows * sizeof(float));
 
 #pragma omp parallel
   {
@@ -76,7 +77,7 @@ typedef struct {
  * \author Ole Schuett
  ******************************************************************************/
 static backend_context_t *backend_start(const dbm_matrix_t *matrix_c) {
-  backend_context_t *ctx = calloc(1, sizeof(backend_context_t));
+  backend_context_t *ctx = dbm_mem_calloc<backend_context_t*>(1, sizeof(backend_context_t));
 
 #if defined(__OFFLOAD) && !defined(__NO_OFFLOAD_DBM)
   dbm_multiply_gpu_start(MAX_BATCH_SIZE, dbm_get_num_shards(matrix_c),

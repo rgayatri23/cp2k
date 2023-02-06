@@ -113,7 +113,7 @@ static void *internal_mempool_malloc(const size_t size, const bool on_device) {
 
     // If no chunk was found, allocate a new one.
     if (chunk == NULL) {
-      chunk = malloc(sizeof(dbm_memchunk_t));
+      chunk = (dbm_memchunk_t*) dbm_malloc(sizeof(dbm_memchunk_t));
       chunk->on_device = on_device;
       chunk->size = 0;
       chunk->mem = NULL;
@@ -202,5 +202,47 @@ void dbm_mempool_clear(void) {
     free(chunk);
   }
 }
+
+
+/*******************************************************************************
+ * \brief Internal routine for malloc and checking if the return pointer is NULL.
+ * \author Rahul Gayatri
+ ******************************************************************************/
+void* dbm_malloc(const size_t size)
+{
+  void* ptr = malloc(size);
+  if(ptr == NULL)
+  {
+    printf("Could not allocate requested memory \n");
+    exit(1);
+  }
+
+  return(ptr);
+}
+
+void* dbm_calloc(size_t nitems, size_t N)
+{
+  void* ptr = calloc(nitems, N);
+  if(ptr == NULL)
+  {
+    printf("Could not c-allocate requested memory \n");
+    exit(1);
+  }
+
+  return(ptr);
+}
+
+void* dbm_realloc(void* ptr, size_t N)
+{
+  ptr = realloc(ptr, N);
+  if(ptr == NULL)
+  {
+    printf("Could not c-allocate requested memory \n");
+    exit(1);
+  }
+
+  return(ptr);
+}
+
 
 // EOF

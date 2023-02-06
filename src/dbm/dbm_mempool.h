@@ -37,6 +37,12 @@ void dbm_mempool_free(void *memory);
  ******************************************************************************/
 void dbm_mempool_clear(void);
 
+void* dbm_malloc(const size_t size);
+
+void* dbm_calloc(size_t nitems, size_t N);
+
+void* dbm_realloc(void* ptr, size_t N);
+
 #ifdef __cplusplus
 }
 #endif

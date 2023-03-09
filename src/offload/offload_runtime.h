@@ -107,6 +107,11 @@ static inline void offloadMemcpyAsyncHtoD(void *const ptr1, const void *ptr2,
   OFFLOAD_CHECK(
       cudaMemcpyAsync(ptr1, ptr2, size, cudaMemcpyHostToDevice, stream));
 #elif defined(__OFFLOAD_HIP)
+  if(ptr1 == NULL || ptr2 == NULL)
+  {
+    printf("NULL ptr passed to hipMemcpyAsyncHtoD\n");
+  }
+  else
   OFFLOAD_CHECK(
       hipMemcpyAsync(ptr1, ptr2, size, hipMemcpyHostToDevice, stream));
 #endif
@@ -122,6 +127,9 @@ static inline void offloadMemcpyAsyncDtoH(void *const ptr1, const void *ptr2,
   OFFLOAD_CHECK(
       cudaMemcpyAsync(ptr1, ptr2, size, cudaMemcpyDeviceToHost, stream));
 #elif defined(__OFFLOAD_HIP)
+  if(ptr1 == NULL || ptr2 == NULL)
+    printf("NULL ptr passed to hipMemcpyAsyncDtoH\n");
+  else
   OFFLOAD_CHECK(
       hipMemcpyAsync(ptr1, ptr2, size, hipMemcpyDeviceToHost, stream));
 #endif
@@ -137,6 +145,9 @@ static inline void offloadMemcpyAsyncDtoD(void *ptr1, const void *ptr2,
   OFFLOAD_CHECK(
       cudaMemcpyAsync(ptr1, ptr2, size, cudaMemcpyDeviceToDevice, stream));
 #elif defined(__OFFLOAD_HIP)
+  if(ptr1 == NULL || ptr2 == NULL)
+    printf("NULL ptr passed to hipMemcpyAsyncDtoD\n");
+  else
   OFFLOAD_CHECK(
       hipMemcpyAsync(ptr1, ptr2, size, hipMemcpyDeviceToDevice, stream));
 #endif
@@ -150,6 +161,9 @@ static inline void offloadMemcpyHtoD(void *ptr_device, const void *ptr_host,
 #if defined(__OFFLOAD_CUDA)
   OFFLOAD_CHECK(cudaMemcpy(ptr_device, ptr_host, size, cudaMemcpyHostToDevice));
 #elif defined(__OFFLOAD_HIP)
+  if(ptr_device == NULL || ptr_host == NULL)
+    printf("NULL ptr passed to hipMemcpyHtoD\n");
+  else
   OFFLOAD_CHECK(hipMemcpy(ptr_device, ptr_host, size, hipMemcpyHostToDevice));
 #endif
 }
@@ -162,6 +176,9 @@ static inline void offloadMemcpyDtoH(void *ptr_device, const void *ptr_host,
 #if defined(__OFFLOAD_CUDA)
   OFFLOAD_CHECK(cudaMemcpy(ptr_device, ptr_host, size, cudaMemcpyDeviceToHost));
 #elif defined(__OFFLOAD_HIP)
+  if(ptr_device == NULL || ptr_host == NULL)
+    printf("NULL ptr passed to hipMemcpyDtoH\n");
+  else
   OFFLOAD_CHECK(hipMemcpy(ptr_device, ptr_host, size, hipMemcpyDeviceToHost));
 #endif
 }
@@ -175,6 +192,9 @@ static inline void offloadMemcpyToSymbol(const void *symbol, const void *src,
   OFFLOAD_CHECK(
       cudaMemcpyToSymbol(symbol, src, count, 0, cudaMemcpyHostToDevice));
 #elif defined(__OFFLOAD_HIP)
+  if(symbol==NULL || src == NULL)
+    printf("NULL ptr passed to hipMemcpyToSymbol\n");
+  else
   OFFLOAD_CHECK(
       hipMemcpyToSymbol(symbol, src, count, 0, hipMemcpyHostToDevice));
 #endif

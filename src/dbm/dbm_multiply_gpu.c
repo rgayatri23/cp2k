@@ -39,12 +39,16 @@ void dbm_multiply_gpu_start(const int max_batch_size, const int nshards,
   // Allocate and upload shards of result matrix C.
   ctx->shards_c_dev =
       (dbm_shard_gpu_t *)dbm_malloc(nshards * sizeof(dbm_shard_gpu_t));
+
   for (int i = 0; i < nshards; i++) {
     offloadStreamCreate(&ctx->shards_c_dev[i].stream);
     ctx->shards_c_dev[i].data_size = ctx->shards_c_host[i].data_size;
-    ctx->shards_c_dev[i].data_allocated = ctx->shards_c_dev[i].data_size;
+
+    ctx->shards_c_dev[i].data_allocated = ctx->shards_c_host[i].data_allocated;
+    // RAHUL_DEBUG - allocating memory size to be equal to host. else the size returns 0.
     const size_t size = ctx->shards_c_dev[i].data_allocated * sizeof(double);
     ctx->shards_c_dev[i].data = (double *)dbm_mempool_device_malloc(size);
+
     offloadMemcpyAsyncHtoD(ctx->shards_c_dev[i].data,
                            ctx->shards_c_host[i].data, size,
                            ctx->shards_c_dev[i].stream);

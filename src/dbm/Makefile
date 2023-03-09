@@ -24,10 +24,21 @@ HIP_PATH := $(ROCM_PATH)
 HIP_BACKEND = __HIP_PLATFORM_AMD__
 LIBARCHFLAG := -lamdhip64 -lrocblas
 GPU_FLAGS := -fPIE -g -O3 --offload-arch=$(ARCH) -Wall -Wextra -Werror -D__OFFLOAD_HIP -D$(HIP_BACKEND)
+else ifeq (${HIP_PLATFORM}, intel)
+CFLAGS += -I${HIP_PATH}/include
+HIP_BACKEND = __HIP_PLATFORM_SPIRV__
+LIBARCHFLAG := -L${MKLROOT}/lib/intel64
+GPU_FLAGS := -D__OFFLOAD_HIP
+CFLAGS += -I$(MKLROOT)/include
 endif
 
-
-LIBS += -fopenmp -ldl -lstdc++ -lc -lm
+ifeq (${HIP_PLATFORM}, intel)
+	OBJECT_C := dbm_multiply_cpu.o
+	LIBS += -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+else
+	LIBS += -fopenmp -ldl -lstdc++ -lc -lm
+	LIBS += -L${HIP_PATH}/hipblas/lib -L${HIP_PATH}/lib $(LIBARCHFLAG) -lhipblas
+endif
 
 ALL_HEADERS := $(shell find . -name "*.h") $(shell find ../offload/ -name "*.h")
 ALL_OBJECTS := ../offload/offload_library.o \
@@ -42,14 +53,21 @@ ALL_OBJECTS := ../offload/offload_library.o \
         dbm_shard.o
 
 
-LIBS += -L${HIP_PATH}/hipblas/lib -L${HIP_PATH}/lib $(LIBARCHFLAG) -lhipblas
 CFLAGS += -I${HIP_PATH}/include -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 ALL_OBJECTS += dbm_multiply_gpu.o
+ALL_OBJECTS += $(OBJECT_C)
 
 %.o: %.cpp $(ALL_HEADERS)
 	cd $(dir $<); $(GPU_CC) -c $(GPU_FLAGS) $(notdir $<)
 
+
+%.o: %.c $(ALL_HEADERS)
+	cd $(dir $<); $(GPU_CC) -c $(CFLAGS) $(GPU_FLAGS) $(notdir $<)
+
+$(OBJECT_C): dbm_multiply_cpu.c
+	cd $(dir $<); $(GPU_CC) -c $(CFLAGS) $(GPU_FLAGS) $(notdir $<)
+
 dbm_miniapp.x: dbm_multiply_gpu_kernel.o dbm_miniapp.o $(ALL_OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+	$(GPU_CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 #EOF

@@ -5,8 +5,8 @@ all: grid_miniapp.x grid_unittest.x
 clean:
 	rm -fv *.o */*.o *.x ../offload/*.o
 
-CFLAGS := -fopenmp -g -O3 -march=native -Wall -Wextra
-NVFLAGS := -g -O3 -lineinfo -arch sm_70 -Wno-deprecated-gpu-targets -Xcompiler "$(CFLAGS)" -D__OFFLOAD_CUDA
+CFLAGS := -D__HIP_PLATFORM_NVIDIA__ -Xcompiler -fopenmp -g -O3 #-march=native -Wall -Wextra
+NVFLAGS :=  -g -O3 -lineinfo -arch sm_80 -Wno-deprecated-gpu-targets -D__OFFLOAD_HIP "$(CFLAGS)"
 LIBS := -lm -lblas
 
 ALL_HEADERS := $(shell find . -name "*.h") $(shell find ../offload/ -name "*.h")
@@ -33,25 +33,30 @@ ALL_OBJECTS := ../offload/offload_buffer.o \
         cpu/tensor_local.o
 
 # Enable Cuda when nvcc compiler is present.
-NVCC := $(shell which nvcc)
+NVCC := hipcc
+#NVCC := $(shell which nvcc)
+
 ifneq ($(NVCC),)
-LIBS += -lcudart -lcuda -lcublas -L${CUDA_PATH}/lib64
-CFLAGS += -I${CUDA_PATH}/include -D__OFFLOAD_CUDA
+LIBS += -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/math_libs/11.7/lib64 -lcudart -lcuda -lcublas -L${CUDA_PATH}/lib64
+CFLAGS += -I${HIP_PATH}/include -D__OFFLOAD_HIP
 ALL_OBJECTS += gpu/grid_gpu_task_list.o \
         gpu/grid_gpu_collocate.o \
         gpu/grid_gpu_integrate.o
+ALL_OBJECTS += hip/grid_hip_context.o \
+        hip/grid_hip_collocate.o \
+        hip/grid_hip_integrate.o
 
 %.o: %.cu $(ALL_HEADERS)
 	cd $(dir $<); $(NVCC) -c $(NVFLAGS) $(notdir $<)
 endif
 
 %.o: %.c $(ALL_HEADERS)
-	cd $(dir $<); $(CC) -c -std=c11 $(CFLAGS) $(notdir $<)
+	cd $(dir $<); $(NVCC) -c $(CFLAGS) $(notdir $<)
 
 grid_miniapp.x: grid_miniapp.o $(ALL_OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+	$(NVCC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 grid_unittest.x: grid_unittest.o $(ALL_OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+	$(NVCC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 #EOF

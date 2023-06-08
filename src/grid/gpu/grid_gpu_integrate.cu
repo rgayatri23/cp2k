@@ -26,6 +26,8 @@
 #error "OpenMP should not be used in .cu files to accommodate HIP."
 #endif
 
+#include "/gpfs/jlse-fs0/users/pvelesko/install/HIP/clang15/chip-spv-testing/include/hip/spirv_hip_ldg.h"
+
 // Teen registers are sufficient to integrate lp <= 2 with a single grid sweep.
 #define GRID_N_CXYZ_REGISTERS 10
 

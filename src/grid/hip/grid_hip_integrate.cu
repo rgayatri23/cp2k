@@ -39,6 +39,8 @@ namespace cg = cooperative_groups;
 #error "OpenMP should not be used in .cu files to accommodate HIP."
 #endif
 
+#include "/gpfs/jlse-fs0/users/pvelesko/install/HIP/clang15/chip-spv-testing/include/hip/spirv_hip_ldg.h"
+
 namespace rocm_backend {
 // do a warp reduction and return the final sum to thread_id = 0
 template <typename T>
@@ -423,9 +425,9 @@ __launch_bounds__(64) void integrate_kernel(const kernel_params dev_) {
           // NVIDIA hardware
 
           T grid_value =
-              __ldg(&dev_.ptr_dev[1][(z2 * dev_.grid_local_size_[1] + y2) *
+              __ldg(&(dev_.ptr_dev[1][(z2 * dev_.grid_local_size_[1] + y2) *
                                          dev_.grid_local_size_[2] +
-                                     x2]);
+                                     x2]));
 
           const T r3x2 = r3.x * r3.x;
           const T r3y2 = r3.y * r3.y;

@@ -5,9 +5,12 @@ all: grid_miniapp.x grid_unittest.x
 clean:
 	rm -fv *.o */*.o *.x ../offload/*.o
 
-CFLAGS := -D__HIP_PLATFORM_NVIDIA__ -Xcompiler -fopenmp -g -O3 #-march=native -Wall -Wextra
+#CFLAGS := -D__HIP_PLATFORM_NVIDIA__ -Xcompiler -fopenmp -g -O3 #-march=native -Wall -Wextra
+CFLAGS := -fopenmp -g -O3 -march=native -Wall -Wextra -Wno-vla-parameter
 NVFLAGS :=  -g -O3 -lineinfo -arch sm_80 -Wno-deprecated-gpu-targets -D__OFFLOAD_HIP "$(CFLAGS)"
-LIBS := -lm -lblas
+LIBS := -lm #-lblas
+
+HIP_PLATFORM = $(shell hipconfig --platform)
 
 ALL_HEADERS := $(shell find . -name "*.h") $(shell find ../offload/ -name "*.h")
 ALL_OBJECTS := ../offload/offload_buffer.o \
@@ -34,11 +37,28 @@ ALL_OBJECTS := ../offload/offload_buffer.o \
 
 # Enable Cuda when nvcc compiler is present.
 NVCC := hipcc
-#NVCC := $(shell which nvcc)
 
-ifneq ($(NVCC),)
+ifeq (${HIP_PLATFORM}, nvidia)
+ARCH := sm_80
+HIP_BACKEND = __HIP_PLATFORM_NVIDIA__
+GPU_FLAGS := -g -O3 -lineinfo -arch $(ARCH) -Wno-deprecated-gpu-targets -Xcompiler "$(CFLAGS)" -D__OFFLOAD_HIP -D$(HIP_BACKEND)
 LIBS += -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/math_libs/11.7/lib64 -lcudart -lcuda -lcublas -L${CUDA_PATH}/lib64
-CFLAGS += -I${HIP_PATH}/include -D__OFFLOAD_HIP
+else ifeq (${HIP_PLATFORM}, amd)
+ARCH := gfx90a
+HIP_PATH := $(ROCM_PATH)
+HIP_BACKEND = __HIP_PLATFORM_AMD__
+LIBARCHFLAG := -lamdhip64 -lrocblas
+GPU_FLAGS := -fPIE -g -O3 --offload-arch=$(ARCH) -Wall -Wextra -Werror -D__OFFLOAD_HIP -D$(HIP_BACKEND)
+else ifeq (${HIP_PLATFORM}, intel)
+CFLAGS += -I${HIP_PATH}/include
+HIP_BACKEND = __HIP_PLATFORM_SPIRV__
+LIBARCHFLAG := -L${MKLROOT}/lib/intel64
+GPU_FLAGS := -D__OFFLOAD_HIP
+CFLAGS += -I$(MKLROOT)/include
+LIBS += -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+endif
+CFLAGS += -I${HIP_PATH}/include -D__OFFLOAD_HIP -D$(HIP_BACKEND)
+
 ALL_OBJECTS += gpu/grid_gpu_task_list.o \
         gpu/grid_gpu_collocate.o \
         gpu/grid_gpu_integrate.o
@@ -47,8 +67,7 @@ ALL_OBJECTS += hip/grid_hip_context.o \
         hip/grid_hip_integrate.o
 
 %.o: %.cu $(ALL_HEADERS)
-	cd $(dir $<); $(NVCC) -c $(NVFLAGS) $(notdir $<)
-endif
+	cd $(dir $<); $(NVCC) -c $(GPU_FLAGS) $(notdir $<)
 
 %.o: %.c $(ALL_HEADERS)
 	cd $(dir $<); $(NVCC) -c $(CFLAGS) $(notdir $<)
